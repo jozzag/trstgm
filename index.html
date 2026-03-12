@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<title>Test pozornosti a hra o knihu</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+
+:root {
+  --bg:        #f4f1ea;
+  --surface:   #fdfcf9;
+  --surface2:  #f0ece2;
+  --border:    #ddd8cc;
+  --border2:   #c8c2b4;
+  --ink:       #1a1814;
+  --ink2:      #4a453c;
+  --ink3:      #8a8278;
+  --ink4:      #b8b2a8;
+  --blue:      #1b3a6b;
+  --blue2:     #2a5298;
+  --blue-pale: #e8eef8;
+  --gold:      #c4922a;
+  --gold-pale: #fdf3e0;
+  --success:   #2d7a4f;
+  --danger:    #c0392b;
+  --r:  3px;
+  --r2: 6px;
+  --focus-ring: 0 0 0 3px rgba(27,58,107,0.35);
+  /* Stroop colour palette — darkened for WCAG contrast on pale bg */
+  --sc-red:    #c02020;
+  --sc-blue:   #1b5abf;
+  --sc-green:  #1d8a3e;
+  --sc-yellow: #8a6000;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 40px 20px 60px;
+}
+body::before {
+  content:''; position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(196,146,42,.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(27,58,107,.05) 0%, transparent 50%);
+  pointer-events:none; z-index:0;
+}
+body::after {
+  content:''; position:fixed; top:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg,var(--blue) 0%,var(--gold) 50%,var(--blue) 100%);
+  z-index:100;
+}
+
+/* ── SKIP LINK ── */
+.skip-link {
+  position:absolute; top:-40px; left:12px;
+  background:var(--blue); color:white;
+  padding:8px 14px; border-radius:0 0 var(--r) var(--r);
+  font-size:.85rem; font-weight:600; z-index:9999;
+  text-decoration:none; transition:top .15s;
+}
+.skip-link:focus { top:0; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+/* ── SCREENS ── */
+.screen { display:none; width:100%; max-width:640px; position:relative; z-index:1; animation:appear .4s cubic-bezier(.22,1,.36,1) both; }
+.screen.active { display:flex; flex-direction:column; }
+@keyframes appear { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── CARD ── */
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r2); padding:44px 48px;
+  box-shadow:0 2px 12px rgba(26,24,20,.06),0 1px 3px rgba(26,24,20,.04);
+}
+
+/* ── INST HEADER ── */
+.inst-header { display:flex; align-items:center; gap:12px; margin-bottom:32px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+.inst-seal { width:34px; height:34px; border:2px solid var(--blue); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.inst-seal svg { width:16px; height:16px; }
+.inst-name { font-family:'IBM Plex Mono','Courier New',monospace; font-size:.62rem; letter-spacing:.18em; text-transform:uppercase; color:var(--blue); line-height:1.45; }
+.inst-ref { margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:.58rem; color:var(--ink4); letter-spacing:.08em; }
+
+/* ── TYPE ── */
+h1 { font-family:'Playfair Display',Georgia,serif; font-size:clamp(1.75rem,4.5vw,2.55rem); font-weight:700; line-height:1.18; margin-bottom:14px; }
+h1 em { font-style:italic; color:var(--blue); }
+h2 { font-family:'Playfair Display',Georgia,serif; font-size:1.4rem; font-weight:600; margin-bottom:14px; }
+.section-label { font-family:'IBM Plex Mono',monospace; font-size:.6rem; letter-spacing:.2em; text-transform:uppercase; color:var(--gold); margin-bottom:18px; display:flex; align-items:center; gap:10px; }
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+p { font-size:.92rem; line-height:1.75; color:var(--ink2); margin-bottom:14px; }
+p.last { margin-bottom:0; }
+strong { color:var(--ink); font-weight:600; }
+.divider { height:1px; background:var(--border); margin:24px 0; }
+
+/* ── STEP LIST ── */
+.step-list { display:flex; flex-direction:column; gap:11px; margin:18px 0; }
+.step-item { display:flex; gap:16px; align-items:flex-start; }
+.step-num { font-family:'IBM Plex Mono',monospace; font-size:.66rem; color:var(--blue); width:20px; flex-shrink:0; padding-top:3px; }
+.step-text { font-size:.87rem; color:var(--ink2); line-height:1.65; }
+
+/* ── FOCUS ── */
+:focus-visible { outline:2px solid var(--blue); outline-offset:2px; border-radius:var(--r); }
+button:focus-visible { outline:2px solid var(--blue); outline-offset:2px; border-radius:var(--r); }
+
+/* ── CONSENT ── */
+.consent-row { display:flex; gap:12px; align-items:flex-start; padding:14px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); margin-top:20px; cursor:pointer; transition:border-color .15s; user-select:none; }
+.consent-row:hover { border-color:var(--border2); }
+.consent-row.checked { border-color:var(--blue); background:var(--blue-pale); }
+.cbox { width:17px; height:17px; min-width:17px; border:2px solid var(--ink4); border-radius:2px; margin-top:2px; display:flex; align-items:center; justify-content:center; transition:all .15s; font-size:11px; font-weight:700; color:transparent; }
+.consent-row.checked .cbox { background:var(--blue); border-color:var(--blue); color:white; }
+.consent-text { font-size:.81rem; color:var(--ink2); line-height:1.55; }
+
+/* ── BUTTONS ── */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; font-family:'DM Sans','Helvetica Neue',sans-serif; font-weight:600; font-size:.88rem; letter-spacing:.03em; border:none; border-radius:var(--r); cursor:pointer; transition:background .15s,transform .1s,box-shadow .15s; user-select:none; }
+.btn-primary { background:var(--blue); color:white; width:100%; padding:16px; margin-top:22px; min-height:52px; }
+.btn-primary:hover:not(:disabled) { background:var(--blue2); transform:translateY(-1px); box-shadow:0 4px 14px rgba(27,58,107,.28); }
+.btn-primary:active:not(:disabled) { transform:translateY(0); box-shadow:none; }
+.btn-primary:disabled { background:var(--border2); color:var(--ink4); cursor:not-allowed; }
+.btn-ghost { background:transparent; color:var(--ink3); border:1px solid var(--border); width:100%; padding:12px; margin-top:10px; font-size:.82rem; }
+.btn-ghost:hover { border-color:var(--border2); color:var(--ink2); }
+
+/* ── PHASE PROGRESS BAR ── */
+.phase-bar { display:flex; gap:4px; margin-bottom:20px; }
+.ph-seg { height:3px; flex:1; border-radius:2px; background:var(--border); transition:background .3s; }
+.ph-seg.done { background:var(--border2); }
+.ph-seg.active { background:var(--blue); }
+
+/* ── MATRIX TASK ── */
+.task-meta { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+.timer-block .t-lbl { font-family:'IBM Plex Mono',monospace; font-size:.58rem; letter-spacing:.15em; text-transform:uppercase; color:var(--ink3); margin-bottom:4px; }
+.timer-val { font-family:'IBM Plex Mono',monospace; font-size:2.5rem; font-weight:500; color:var(--blue); line-height:1; letter-spacing:-.02em; }
+.timer-val.urgent { color:var(--danger); animation:urgblink .6s step-start infinite; }
+@keyframes urgblink { 50%{opacity:.35} }
+.score-block { text-align:right; }
+.score-block .s-lbl { font-family:'IBM Plex Mono',monospace; font-size:.58rem; letter-spacing:.15em; text-transform:uppercase; color:var(--ink3); margin-bottom:4px; }
+.score-block .s-val { font-family:'IBM Plex Mono',monospace; font-size:1.45rem; color:var(--ink); }
+.progress-rail { height:2px; background:var(--border); margin-bottom:18px; border-radius:1px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--blue); transition:width 1s linear; }
+.matrix-wrap { background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); padding:14px; margin:14px 0; }
+.matrix-grid { display:grid; gap:3px; width:100%; }
+.mc { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:clamp(.52rem,1.7vw,.78rem); color:var(--ink3); border-radius:2px; background:var(--surface); border:1px solid var(--border); min-width:0; }
+.mc.one { color:var(--blue); font-weight:500; background:var(--blue-pale); border-color:rgba(27,58,107,.2); }
+.answer-row { display:flex; gap:8px; align-items:stretch; margin-top:12px; }
+.answer-input { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:12px 14px; font-family:'IBM Plex Mono',monospace; font-size:1.05rem; color:var(--ink); outline:none; transition:border-color .15s; -moz-appearance:textfield; min-width:0; }
+/* iOS zooms inputs with font-size < 16px — override to prevent */
+@supports (-webkit-touch-callout: none) { .answer-input { font-size:16px; } }
+.answer-input::-webkit-outer-spin-button,.answer-input::-webkit-inner-spin-button { -webkit-appearance:none; }
+.answer-input:focus { border-color:var(--blue); box-shadow:var(--focus-ring); }
+.answer-input.ok  { border-color:var(--success); background:#f0faf5; }
+.answer-input.err { border-color:var(--danger);  background:#fdf5f4; }
+.ok-btn { background:var(--blue); color:white; border:none; border-radius:var(--r); padding:12px 22px; font-family:'DM Sans',sans-serif; font-weight:600; font-size:.83rem; cursor:pointer; flex-shrink:0; transition:background .15s; min-height:48px; }
+.ok-btn:hover { background:var(--blue2); }
+.feedback { font-family:'IBM Plex Mono',monospace; font-size:.79rem; margin-top:10px; min-height:18px; line-height:1.4; }
+.feedback.ok  { color:var(--success); }
+.feedback.err { color:var(--danger); }
+
+/* ── STROOP TASK ── */
+.stroop-wrap { text-align:center; padding:10px 0 4px; }
+
+.stroop-word {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:clamp(2.8rem,10vw,4.2rem);
+  font-weight:500;
+  letter-spacing:.04em;
+  line-height:1;
+  margin:12px 0 28px;
+  min-height:5rem;
+  display:flex; align-items:center; justify-content:center;
+  user-select:none;
+  transition:opacity .1s;
+}
+.stroop-word.flash-ok  { animation:sw-ok  .25s ease; }
+.stroop-word.flash-err { animation:sw-err .25s ease; }
+@keyframes sw-ok  { 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
+@keyframes sw-err { 0%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} 100%{transform:translateX(0)} }
+
+/* Per-item countdown ring */
+.stroop-timer-ring { position:relative; width:52px; height:52px; margin:0 auto 16px; }
+.stroop-timer-ring svg { transform:rotate(-90deg); }
+.str-ring-bg { fill:none; stroke:var(--border); stroke-width:3; }
+.str-ring-fg { fill:none; stroke:var(--blue); stroke-width:3; stroke-linecap:round; transition:stroke-dashoffset .1s linear, stroke .2s; }
+.str-ring-fg.urgent { stroke:var(--danger); }
+.str-ring-num { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:.85rem; color:var(--blue); }
+.str-ring-num.urgent { color:var(--danger); }
+
+/* Stroop question */
+.stroop-question {
+  font-size:.8rem; color:var(--ink3); margin-bottom:16px;
+  font-family:'IBM Plex Mono',monospace; letter-spacing:.06em; text-transform:uppercase;
+}
+
+/* Color buttons */
+.color-btns {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:10px; margin-top:8px;
+}
+.color-btn {
+  border:none; border-radius:var(--r);
+  padding:18px 10px;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:.82rem; font-weight:500;
+  letter-spacing:.06em;
+  cursor:pointer;
+  color:white;
+  min-height:56px;
+  transition:transform .1s, box-shadow .1s, opacity .15s;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+}
+.color-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.18); }
+.color-btn:active:not(:disabled) { transform:translateY(0); }
+.color-btn:disabled { opacity:.45; cursor:not-allowed; }
+.color-btn[data-color="ČERVENÁ"]  { background:var(--sc-red); }
+.color-btn[data-color="MODR\00c1"]    { background:var(--sc-blue); }
+.color-btn[data-color="ZELEN\00c1"]   { background:var(--sc-green); }
+.color-btn[data-color="\017dLT\00c1"]     { background:var(--sc-yellow); }
+/* Fallback via JS-applied classes (more reliable across encodings) */
+.color-btn.clr-red    { background:var(--sc-red); }
+.color-btn.clr-blue   { background:var(--sc-blue); }
+.color-btn.clr-green  { background:var(--sc-green); }
+.color-btn.clr-yellow { background:var(--sc-yellow); }
+
+/* Stroop score row */
+.stroop-scores { display:flex; gap:16px; justify-content:center; margin-bottom:20px; }
+.ss-box { text-align:center; }
+.ss-lbl { font-family:'IBM Plex Mono',monospace; font-size:.56rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink3); margin-bottom:3px; }
+.ss-val { font-family:'IBM Plex Mono',monospace; font-size:1.3rem; color:var(--ink); }
+.ss-val.ok  { color:var(--success); }
+.ss-val.err { color:var(--danger); }
+
+/* Timeout flash */
+.stroop-timeout-msg { font-family:'IBM Plex Mono',monospace; font-size:.8rem; color:var(--danger); min-height:1.2em; margin-top:6px; }
+
+/* ── BRIDGE SCREEN (between tasks) ── */
+.bridge-scores { display:flex; gap:10px; margin:20px 0; }
+.bridge-tile { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); padding:16px 12px; text-align:center; }
+.bridge-tile .bt-lbl { font-family:'IBM Plex Mono',monospace; font-size:.58rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink3); margin-bottom:6px; }
+.bridge-tile .bt-val { font-family:'IBM Plex Mono',monospace; font-size:1.35rem; color:var(--ink); line-height:1; }
+.bridge-tile.total { border-color:var(--gold); background:var(--gold-pale); }
+.bridge-tile.total .bt-val { color:var(--gold); }
+
+/* ── TRUST GAME ── */
+.mechanic-box {
+  background: var(--blue-pale);
+  border: 1px solid rgba(27,58,107,.18);
+  border-radius: var(--r2);
+  padding: 18px 20px;
+  margin-bottom: 22px;
+}
+.mech-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 14px;
+}
+.mech-steps { display: flex; flex-direction: column; gap: 10px; }
+.mech-step { display: flex; gap: 12px; align-items: flex-start; }
+.mech-icon {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .78rem;
+  color: var(--blue);
+  flex-shrink: 0;
+  width: 18px;
+  padding-top: 1px;
+}
+.mech-text { font-size: .84rem; color: var(--ink2); line-height: 1.6; }
+.mech-text em { font-style: italic; color: var(--danger); font-weight: 500; }
+
+.trustee-section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-bottom: 8px;
+}
+
+.tp-uncertain {
+  display: inline-block;
+  font-size: .55rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: rgba(192,57,43,.12);
+  color: var(--danger);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.trustee-card { border:1px solid var(--border); border-radius:var(--r2); overflow:hidden; margin-bottom:20px; }
+.trustee-head { background:var(--blue); padding:16px 20px; display:flex; align-items:center; gap:14px; }
+.trustee-avatar { width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex-shrink:0; }
+.trustee-name { font-family:'Playfair Display',serif; font-size:1.05rem; font-weight:600; color:white; line-height:1.2; }
+.trustee-title { font-size:.74rem; color:rgba(255,255,255,.72); margin-top:3px; }
+.trustee-body { padding:16px 20px; background:var(--surface2); }
+.trustee-desc { font-size:.86rem; color:var(--ink2); line-height:1.65; margin:0; }
+
+.balance-row { display:flex; gap:10px; margin-bottom:18px; }
+.balance-box { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); padding:14px 16px; }
+.balance-box .bl-lbl { font-family:'IBM Plex Mono',monospace; font-size:.58rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink3); margin-bottom:5px; }
+.balance-box .bl-val { font-family:'IBM Plex Mono',monospace; font-size:1.3rem; color:var(--ink); line-height:1; }
+.balance-box.accent { border-color:var(--gold); background:var(--gold-pale); }
+.balance-box.accent .bl-val { color:var(--gold); }
+
+.send-section { margin:16px 0; }
+.send-label-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+.send-label-row .sl-title { font-size:.83rem; font-weight:600; color:var(--ink2); }
+.send-label-row .sl-val { font-family:'IBM Plex Mono',monospace; font-size:1.1rem; color:var(--blue); }
+
+input[type=range] { width:100%; -webkit-appearance:none; appearance:none; height:4px; background:var(--border); border-radius:2px; outline:none; cursor:pointer; touch-action:pan-x; }
+input[type=range]:focus-visible { outline:2px solid var(--blue); outline-offset:4px; border-radius:2px; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:28px; height:28px; border-radius:50%; background:var(--blue); cursor:pointer; border:3px solid var(--surface); box-shadow:0 0 0 1px var(--blue); transition:transform .1s; }
+input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.12); }
+input[type=range]::-moz-range-thumb { width:28px; height:28px; border-radius:50%; background:var(--blue); border:3px solid var(--surface); cursor:pointer; }
+
+.slider-ticks { display:flex; justify-content:space-between; margin-top:6px; padding:0 2px; }
+.slider-ticks span { font-family:'IBM Plex Mono',monospace; font-size:.6rem; color:var(--ink4); }
+
+.transfer-preview { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+.tp-box { background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); padding:12px 14px; }
+.tp-box .tp-lbl { font-family:'IBM Plex Mono',monospace; font-size:.57rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink3); margin-bottom:4px; }
+.tp-box .tp-val { font-family:'IBM Plex Mono',monospace; font-size:.95rem; color:var(--ink); }
+.tp-box.hl { border-color:rgba(27,58,107,.3); background:var(--blue-pale); }
+.tp-box.hl .tp-val { color:var(--blue); }
+
+/* ── RESULT ── */
+.result-box { border:1px solid var(--border); border-radius:var(--r2); overflow:hidden; margin:16px 0; }
+.result-box-head { padding:13px 20px; font-family:'IBM Plex Mono',monospace; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; font-weight:500; }
+.result-box.positive .result-box-head { background:#edf7f2; color:var(--success); border-bottom:1px solid rgba(45,122,79,.2); }
+.result-box.neutral  .result-box-head { background:var(--surface2); color:var(--ink3); border-bottom:1px solid var(--border); }
+.result-box-body { padding:16px 20px; }
+.result-line { display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--border); font-size:.85rem; }
+.result-line:last-child { border-bottom:none; }
+.result-line .rl-lbl { color:var(--ink2); }
+.result-line .rl-val { font-family:'IBM Plex Mono',monospace; font-size:.88rem; color:var(--ink); }
+.result-line .rl-val.pos { color:var(--success); }
+.result-line .rl-val.big { font-size:1.15rem; color:var(--blue); font-weight:500; }
+.total-row { display:flex; justify-content:space-between; align-items:center; padding:14px 0 0; border-top:1px solid var(--border); margin-top:6px; }
+.total-row .tr-lbl { font-family:'IBM Plex Mono',monospace; font-size:.6rem; letter-spacing:.15em; text-transform:uppercase; color:var(--ink3); }
+.total-row .tr-val { font-family:'IBM Plex Mono',monospace; font-size:1.1rem; color:var(--ink); }
+
+/* ── QUESTIONNAIRE ── */
+.q-group { margin-bottom:22px; }
+.q-label { font-size:.88rem; font-weight:600; color:var(--ink); margin-bottom:10px; display:block; }
+.radio-col { display:flex; flex-direction:column; gap:6px; }
+.radio-opt { display:flex; gap:12px; align-items:center; padding:13px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); cursor:pointer; font-size:.86rem; color:var(--ink2); transition:border-color .12s; user-select:none; min-height:48px; -webkit-tap-highlight-color:transparent; }
+.radio-opt:hover { border-color:var(--border2); }
+.radio-opt input[type=radio] { position:absolute; opacity:0; width:0; height:0; }
+.radio-opt:focus-within { outline:2px solid var(--blue); outline-offset:1px; border-radius:var(--r); }
+.radio-opt.sel { border-color:var(--blue); background:var(--blue-pale); color:var(--ink); }
+.rdot { width:14px; height:14px; min-width:14px; border-radius:50%; border:2px solid var(--ink4); display:flex; align-items:center; justify-content:center; transition:all .12s; flex-shrink:0; }
+.radio-opt.sel .rdot { border-color:var(--blue); background:var(--blue); }
+.radio-opt.sel .rdot::after { content:''; width:4px; height:4px; border-radius:50%; background:white; display:block; }
+
+/* ── EMAIL ── */
+.email-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); padding:14px 16px; font-family:'DM Sans',sans-serif; font-size:1rem; color:var(--ink); outline:none; transition:border-color .15s; margin-top:12px; display:block; }
+.email-input:focus { border-color:var(--blue); box-shadow:var(--focus-ring); }
+.email-input::placeholder { color:var(--ink4); }
+.email-err { font-family:'IBM Plex Mono',monospace; font-size:.74rem; color:var(--danger); margin-top:6px; min-height:16px; }
+.notice { background:var(--gold-pale); border:1px solid rgba(196,146,42,.25); border-radius:var(--r); padding:12px 16px; font-size:.82rem; color:var(--ink2); line-height:1.55; margin-top:14px; }
+
+/* ── DEBRIEF ── */
+.debrief-reveal { background:var(--blue-pale); border:1px solid rgba(27,58,107,.2); border-radius:var(--r2); padding:22px; margin:20px 0; }
+.dr-lbl { font-family:'IBM Plex Mono',monospace; font-size:.6rem; letter-spacing:.18em; text-transform:uppercase; color:var(--blue); margin-bottom:8px; }
+.dr-headline { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--blue); font-weight:600; margin-bottom:10px; line-height:1.3; }
+.dr-desc { font-size:.86rem; color:var(--ink2); line-height:1.7; margin:0; }
+.stats-row { display:flex; gap:10px; margin:18px 0; }
+.stat-tile { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); padding:14px 12px; text-align:center; }
+.stat-tile .stv { font-family:'IBM Plex Mono',monospace; font-size:1.45rem; color:var(--blue); line-height:1; margin-bottom:6px; }
+.stat-tile .stl { font-size:.63rem; text-transform:uppercase; letter-spacing:.07em; color:var(--ink3); line-height:1.35; }
+.bar-section { margin:20px 0; }
+.bar-row { margin-bottom:16px; }
+.bar-row-lbl { font-size:.78rem; color:var(--ink2); margin-bottom:5px; display:flex; justify-content:space-between; align-items:baseline; }
+.bar-row-lbl .br-pct { font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--ink3); }
+.bar-row-lbl.you { color:var(--blue); font-weight:600; }
+.bar-row-lbl.you .br-pct { color:var(--blue); }
+.bar-track { height:10px; background:var(--surface2); border-radius:5px; overflow:hidden; border:1px solid var(--border); }
+.bar-fill { height:100%; border-radius:5px; width:0; transition:width .95s cubic-bezier(.22,1,.36,1); }
+.bar-fill.you { background:var(--blue); }
+.bar-fill.ref { background:var(--border2); }
+.bar-caption { font-size:.72rem; color:var(--ink3); margin-top:4px; font-style:italic; }
+.insight-box { background:var(--surface2); border-left:3px solid var(--gold); padding:16px 20px; border-radius:0 var(--r) var(--r) 0; margin:18px 0; }
+.insight-box .ib-title { font-size:.68rem; font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.15em; color:var(--gold); margin-bottom:8px; }
+.insight-box p { font-size:.84rem; color:var(--ink2); line-height:1.7; margin:0; }
+.ref-table { width:100%; border-collapse:collapse; font-size:.83rem; margin:14px 0; }
+.ref-table th { font-family:'IBM Plex Mono',monospace; font-size:.58rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink3); padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); background:var(--surface2); }
+.ref-table td { padding:9px 12px; border-bottom:1px solid var(--border); color:var(--ink2); }
+.ref-table tr:last-child td { border-bottom:none; }
+.ref-table .mono { font-family:'IBM Plex Mono',monospace; color:var(--ink); }
+.ref-table tr.highlight-row td { background:var(--blue-pale); color:var(--blue); font-weight:600; }
+.ref-table tr.highlight-row .mono { color:var(--blue); }
+
+/* ── THANKS ── */
+.thanks-seal { width:60px; height:60px; border:2px solid var(--blue); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:1.7rem; }
+
+/* ── RESPONSIVE ── */
+@media (max-width:480px) {
+  body { padding:12px 8px 40px; }
+  .card { padding:20px 16px; }
+  .stats-row,.bridge-scores { flex-wrap:wrap; }
+  .stat-tile,.bridge-tile { min-width:calc(50% - 5px); }
+  .transfer-preview { grid-template-columns:1fr; }
+  .balance-row { flex-direction:column; }
+  .color-btns { grid-template-columns:1fr 1fr; gap:8px; }
+  .color-btn { padding:18px 8px; font-size:.78rem; min-height:56px; }
+  /* Stroop: stack timer and scores vertically on very small screens */
+  .task-meta { flex-wrap:wrap; gap:8px; }
+  .stroop-scores { justify-content:flex-end; gap:20px; }
+  .timer-val { font-size:2rem; }
+}
+@media (forced-colors:active) {
+  .bar-fill.you { forced-color-adjust:none; background:ButtonText; }
+  .bar-fill.ref  { forced-color-adjust:none; background:GrayText; }
+  .color-btn { forced-color-adjust:none; }
+}
+</style>
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Preskočiť na hlavný obsah</a>
+<main id="main-content">
+
+<!-- ═══════════════════════════════════
+     S1 — WELCOME
+═══════════════════════════════════ -->
+<div id="s-welcome" class="screen active" role="main" aria-labelledby="h-welcome">
+<div class="card">
+  <div class="inst-header" aria-hidden="true">
+    <div class="inst-seal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1b3a6b" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    </div>
+    <div class="inst-name">Výskumné laboratórium<br>behaviorálnej ekonómie</div>
+    <div class="inst-ref">EXP–2024–TG</div>
+  </div>
+
+  <div class="section-label" aria-hidden="true">Investičný experiment</div>
+  <h1 id="h-welcome">Ako sa <em>rozhodujeme</em>?</h1>
+  <p>Zahrajte si dve hry, nazbierajte čo najväčšie množstvo bodov a možno získate aj bonus a nový poznatok.</p>
+
+  <div class="step-list" role="list">
+    <div class="step-item" role="listitem"><div class="step-num" aria-hidden="true">01</div><div class="step-text"><strong>Mriežková úloha</strong> — spočítaj jednotky (60 sekúnd)</div></div>
+    <div class="step-item" role="listitem"><div class="step-num" aria-hidden="true">02</div><div class="step-text"><strong>Stroop test</strong> — pomenuj farby pod časovým tlakom (45 sekúnd)</div></div>
+    <div class="step-item" role="listitem"><div class="step-num" aria-hidden="true">03</div><div class="step-text"><strong>Investičná hra</strong> — rozhoduješ sa, koľko bodov zveriš správcovi</div></div>
+    <div class="step-item" role="listitem"><div class="step-num" aria-hidden="true">04</div><div class="step-text"><strong>Odhalenie</strong> — zistíš, čo tvoje rozhodnutie prezrádza o dôvere</div></div>
+    <div class="step-item" role="listitem"><div class="step-num" aria-hidden="true">05</div><div class="step-text"><strong>Žreb</strong> — zadaj email a súťaž o vedeckú knihu</div></div>
+  </div>
+
+  <div class="divider"></div>
+  <p class="last" style="font-size:.82rem;color:var(--ink3)">Celkový čas: <strong style="color:var(--ink2)">cca 7 minút</strong> &nbsp;·&nbsp; Dáta sú anonymné, výlučne na výskumné účely.</p>
+
+  <div class="consent-row" id="consent-row" role="checkbox" aria-checked="false" tabindex="0" aria-label="Súhlas s účasťou na experimente">
+    <div class="cbox" aria-hidden="true">✓</div>
+    <div class="consent-text">Súhlasím s účasťou. Rozumiem, že moje rozhodnutia budú zaznamenané anonymne.</div>
+  </div>
+  <button class="btn btn-primary" id="btn-start" disabled onclick="startExperiment()">Začať experiment →</button>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S2 — MATRIX INTRO
+═══════════════════════════════════ -->
+<div id="s-task-intro" class="screen" aria-labelledby="h-task-intro">
+<div class="card">
+  <div class="phase-bar" aria-hidden="true"><div class="ph-seg active"></div><div class="ph-seg"></div><div class="ph-seg"></div></div>
+  <div class="section-label" aria-hidden="true">Úloha 1 z 2 · Mriežková úloha</div>
+  <h2 id="h-task-intro">Spočítaj jednotky v mriežke</h2>
+  <p>Zobrazí sa ti mriežka čísel <strong>0</strong> a <strong>1</strong>. Spočítaj, koľko <strong>jednotiek (1)</strong> obsahuje, a zadaj odpoveď.</p>
+  <p>Za každú správnu odpoveď získaš body, ktoré budeš mať k dispozícii v investičnej hre.</p>
+  <div class="notice" role="note">⏱ Máš <strong>60 sekúnd</strong>. Enter alebo tlačidlo OK potvrdí odpoveď. Odpovedaj čo najrýchlejšie.</div>
+  <button class="btn btn-primary" onclick="startMatrixTask()">Spustiť úlohu →</button>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S3 — MATRIX TASK
+═══════════════════════════════════ -->
+<div id="s-matrix" class="screen" aria-labelledby="h-matrix">
+<div class="card">
+  <div class="phase-bar" aria-hidden="true"><div class="ph-seg active"></div><div class="ph-seg"></div><div class="ph-seg"></div></div>
+  <div class="task-meta">
+    <div class="timer-block">
+      <div class="t-lbl" id="mat-timer-lbl">Zostatok</div>
+      <div class="timer-val" id="mat-timer" role="timer" aria-live="off" aria-labelledby="mat-timer-lbl">60</div>
+    </div>
+    <div class="score-block" aria-live="polite" aria-atomic="true">
+      <div class="s-lbl">Správne</div>
+      <div class="s-val" id="mat-score">0</div>
+    </div>
+  </div>
+  <div class="progress-rail" role="progressbar" aria-valuemin="0" aria-valuemax="60" aria-valuenow="60" id="mat-prog-rail" aria-label="Zostatok času — mriežková úloha">
+    <div class="progress-fill" id="mat-prog-fill" style="width:100%"></div>
+  </div>
+  <h2 id="h-matrix" class="sr-only">Mriežková úloha — spočítaj jednotky</h2>
+  <div class="matrix-wrap">
+    <div class="matrix-grid" id="matrix-grid" role="img" aria-label="Mriežka núl a jednotiek"></div>
+  </div>
+  <div class="answer-row">
+    <label for="ans-input" class="sr-only">Počet jednotiek v mriežke</label>
+    <input type="number" class="answer-input" id="ans-input" placeholder="Počet jednotiek…" min="0" max="300" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-describedby="mat-feedback">
+    <button class="ok-btn" onclick="submitMatrixAnswer()" aria-label="Potvrdiť odpoveď">OK</button>
+  </div>
+  <div class="feedback" id="mat-feedback" aria-live="assertive" aria-atomic="true"></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S4 — STROOP INTRO
+═══════════════════════════════════ -->
+<div id="s-stroop-intro" class="screen" aria-labelledby="h-stroop-intro">
+<div class="card">
+  <div class="phase-bar" aria-hidden="true"><div class="ph-seg done"></div><div class="ph-seg active"></div><div class="ph-seg"></div></div>
+  <div class="section-label" aria-hidden="true">Úloha 2 z 2 · Stroop test - Uhádni farbu</div>
+  <h2 id="h-stroop-intro">Pomenuj farbu — nie slovo</h2>
+  <p>Zobrazí sa ti farebné slovo. Tvojou úlohou je stlačiť tlačidlo <strong>s farbou písma</strong> — nie s názvom slova.</p>
+  <p>Napríklad: ak je slovo <span style="color:var(--sc-blue);font-weight:600;font-family:'IBM Plex Mono',monospace">ČERVENÁ</span> napísané modrou farbou, správna odpoveď je <strong>MODRÁ</strong>.</p>
+  <p>Na každú odpoveď máš <strong>3 sekundy</strong>. Za každú správnu a včasnú odpoveď získaš ďalšie body.</p>
+  <div class="notice" role="note">💡 Je to rýchle a náročné — to je zámer. Stroop efekt spomaľuje reakciu aj trénerov.</div>
+  <button class="btn btn-primary" onclick="startStroopTask()">Začať Stroop test →</button>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S5 — STROOP TASK
+═══════════════════════════════════ -->
+<div id="s-stroop" class="screen" aria-labelledby="h-stroop">
+<div class="card">
+  <div class="phase-bar" aria-hidden="true"><div class="ph-seg done"></div><div class="ph-seg active"></div><div class="ph-seg"></div></div>
+  <div class="task-meta">
+    <div class="timer-block">
+      <div class="t-lbl" id="str-total-lbl">Zostatok</div>
+      <div class="timer-val" id="str-total-timer" role="timer" aria-live="off" aria-labelledby="str-total-lbl">45</div>
+    </div>
+    <div class="stroop-scores">
+      <div class="ss-box">
+        <div class="ss-lbl">Správne</div>
+        <div class="ss-val ok" id="str-correct">0</div>
+      </div>
+      <div class="ss-box">
+        <div class="ss-lbl">Chybné</div>
+        <div class="ss-val err" id="str-wrong">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-rail" role="progressbar" aria-valuemin="0" aria-valuemax="45" aria-valuenow="45" id="str-prog-rail" aria-label="Zostatok času — Stroop test">
+    <div class="progress-fill" id="str-prog-fill" style="width:100%"></div>
+  </div>
+
+  <h2 id="h-stroop" class="sr-only">Stroop test — stlač farbu písma</h2>
+
+  <div class="stroop-wrap">
+    <div class="stroop-timer-ring" aria-hidden="true">
+      <svg width="52" height="52" viewBox="0 0 52 52">
+        <circle class="str-ring-bg" cx="26" cy="26" r="22"/>
+        <circle class="str-ring-fg" id="str-ring-fg" cx="26" cy="26" r="22" stroke-dasharray="138.23" stroke-dashoffset="0"/>
+      </svg>
+      <div class="str-ring-num" id="str-ring-num">3</div>
+    </div>
+
+    <div class="stroop-question" aria-hidden="true">Akou farbou je napísané toto slovo?</div>
+    <div class="stroop-word" id="stroop-word" aria-live="polite" aria-atomic="true" aria-label="Slovo na identifikáciu">—</div>
+    <div class="stroop-timeout-msg" id="str-timeout-msg" aria-live="assertive" aria-atomic="true"></div>
+  </div>
+
+  <div class="color-btns" id="color-btns" role="group" aria-label="Vyber farbu písma">
+    <!-- Injected by JS -->
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S6 — BRIDGE (task results summary)
+═══════════════════════════════════ -->
+<div id="s-bridge" class="screen" aria-labelledby="h-bridge">
+<div class="card">
+  <div class="phase-bar" aria-hidden="true"><div class="ph-seg done"></div><div class="ph-seg done"></div><div class="ph-seg active"></div></div>
+  <div class="section-label" aria-hidden="true">Výsledky úloh</div>
+  <h2 id="h-bridge">Tvoj rozpočet</h2>
+  <p>Obe úlohy sú za tebou. Takto dopadli tvoje výsledky:</p>
+
+  <div class="bridge-scores" role="group" aria-label="Výsledky kognitívnych úloh">
+    <div class="bridge-tile">
+      <div class="bt-lbl">Mriežka</div>
+      <div class="bt-val" id="br-matrix">—</div>
+    </div>
+    <div class="bridge-tile">
+      <div class="bt-lbl">Stroop</div>
+      <div class="bt-val" id="br-stroop">—</div>
+    </div>
+    <div class="bridge-tile total">
+      <div class="bt-lbl">Celkový rozpočet</div>
+      <div class="bt-val" id="br-total">—</div>
+    </div>
+  </div>
+
+  <p>Teraz prichádza možnosť navýšenia získaných bodov: <strong>investičné rozhodnutie</strong>. S týmto rozpočtom rozhodneš, koľko zveriš správcovi.</p>
+  <button class="btn btn-primary" onclick="startGame()">Pokračovať do hry →</button>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S7 — GAME
+═══════════════════════════════════ -->
+<div id="s-game" class="screen" aria-labelledby="h-game">
+<div class="card">
+  <div class="section-label" aria-hidden="true">Investičné rozhodnutie</div>
+  <h2 id="h-game">Koľko zveríš správcovi?</h2>
+
+  <!-- Mechanic explanation box -->
+  <div class="mechanic-box" role="note" aria-label="Pravidlá hry">
+    <div class="mech-title">Ako hra funguje</div>
+    <div class="mech-steps">
+      <div class="mech-step">
+        <div class="mech-icon" aria-hidden="true">①</div>
+        <div class="mech-text">Vyberieš, koľko bodov pošleš správcovi (0 – 100 % zo zisku z predchádzajúcich hier).</div>
+      </div>
+      <div class="mech-step">
+        <div class="mech-icon" aria-hidden="true">②</div>
+        <div class="mech-text">Každý bod, ktorý pošleš, môžeš investíciou získať <strong>dvojnásobok</strong> — správca ako odmenu dostane dvojnásobok toho, čo si poslal.</div>
+      </div>
+      <div class="mech-step">
+        <div class="mech-icon" aria-hidden="true">③</div>
+        <div class="mech-text">Správca sa <strong>sám rozhodne</strong>, koľko ti vráti. Môže vrátiť všetko, časť, alebo nič. <em>Výsledok nie je zaručený.</em></div>
+      </div>
+      <div class="mech-step">
+        <div class="mech-icon" aria-hidden="true">④</div>
+        <div class="mech-text">Body, ktoré nepošleš, si ponecháš. Poslané body sa môžu znásobiť — závisí to od rozhodnutia správcu.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trustee profile — no name, only role -->
+  <div class="trustee-section-label">Tvoj správca</div>
+  <article class="trustee-card" aria-label="Profil správcu">
+    <div class="trustee-head">
+      <div class="trustee-avatar" id="t-avatar" aria-hidden="true">👤</div>
+      <div>
+        <div class="trustee-name" id="t-name">—</div>
+        <div class="trustee-title" id="t-title">—</div>
+      </div>
+    </div>
+    <div class="trustee-body">
+      <p class="trustee-desc" id="t-desc">—</p>
+    </div>
+  </article>
+
+  <!-- Balance -->
+  <div class="balance-row">
+    <div class="balance-box">
+      <div class="bl-lbl">Tvoj rozpočet</div>
+      <div class="bl-val" id="my-balance">—</div>
+    </div>
+    <div class="balance-box accent">
+      <div class="bl-lbl">Celkom zarobené</div>
+      <div class="bl-val" id="total-so-far">—</div>
+    </div>
+  </div>
+
+  <!-- Slider -->
+  <div class="send-section">
+    <div class="send-label-row">
+      <span class="sl-title" id="slider-label">Koľko bodov pošleš?</span>
+      <span class="sl-val" id="send-val" aria-live="polite" aria-atomic="true">—</span>
+    </div>
+    <input type="range" id="send-slider" min="0" max="100" value="50"
+           oninput="updateSend()"
+           aria-labelledby="slider-label"
+           aria-describedby="send-val">
+    <div class="slider-ticks" aria-hidden="true">
+      <span>0 %</span><span>25 %</span><span>50 %</span><span>75 %</span><span>100 %</span>
+    </div>
+  </div>
+
+  <!-- Transfer preview — 3 certain columns + 1 uncertain -->
+  <div class="transfer-preview" role="group" aria-label="Prehľad transakcie">
+    <div class="tp-box"><div class="tp-lbl">Pošleš správcovi</div><div class="tp-val" id="tp-send">—</div></div>
+    <div class="tp-box"><div class="tp-lbl">Zostatok istite u teba</div><div class="tp-val" id="tp-keep">—</div></div>
+    <div class="tp-box"><div class="tp-lbl">Správca dostane (×2)</div><div class="tp-val" id="tp-trustee">—</div></div>
+    <div class="tp-box hl">
+      <div class="tp-lbl">Možný návrat <span class="tp-uncertain">neistý</span></div>
+      <div class="tp-val" id="tp-return">—</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="btn-send" onclick="submitSend()">Potvrdiť a odoslať →</button>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S8 — RESULT
+═══════════════════════════════════ -->
+<div id="s-result" class="screen" aria-labelledby="h-result">
+<div class="card">
+  <div class="section-label" aria-hidden="true">Výsledok investície</div>
+  <h2 id="h-result">Výsledok</h2>
+
+  <div class="result-box" id="res-box" role="region" aria-label="Detaily výsledku">
+    <div class="result-box-head" id="res-head">—</div>
+    <div class="result-box-body">
+      <div class="result-line"><span class="rl-lbl">Poslal si</span><span class="rl-val" id="rl-sent">—</span></div>
+      <div class="result-line"><span class="rl-lbl">Správca dostal (×2)</span><span class="rl-val" id="rl-doubled">—</span></div>
+      <div class="result-line"><span class="rl-lbl">Správca ti vrátil</span><span class="rl-val pos" id="rl-returned">—</span></div>
+      <div class="result-line" style="padding-top:10px">
+        <span class="rl-lbl"><strong>Celkový zisk</strong></span>
+        <span class="rl-val big" id="rl-gain">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="total-row">
+    <span class="tr-lbl">Celkové body</span>
+    <span class="tr-val" id="tr-total">—</span>
+  </div>
+
+  <button class="btn btn-primary" id="btn-next" onclick="goToQuestionnaire()">Pokračovať →</button>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S9 — QUESTIONNAIRE
+═══════════════════════════════════ -->
+<div id="s-questionnaire" class="screen" aria-labelledby="h-q">
+<div class="card">
+  <div class="section-label" aria-hidden="true">Krátky dotazník</div>
+  <h2 id="h-q">Niekoľko otázok</h2>
+  <p>Posledný krok pred odhalením.</p>
+  <div class="divider"></div>
+
+  <div class="q-group">
+    <label class="q-label" id="lbl-age">Tvoj vek</label>
+    <div class="radio-col" id="q-age" role="radiogroup" aria-labelledby="lbl-age"></div>
+  </div>
+  <div class="q-group">
+    <label class="q-label" id="lbl-gender">Pohlavie</label>
+    <div class="radio-col" id="q-gender" role="radiogroup" aria-labelledby="lbl-gender"></div>
+  </div>
+  <div class="q-group">
+    <label class="q-label" id="lbl-trust">Všeobecne — do akej miery dôveruješ ľuďom, ktorých nepoznáš?</label>
+    <div class="radio-col" id="q-trust" role="radiogroup" aria-labelledby="lbl-trust"></div>
+  </div>
+
+  <button class="btn btn-primary" id="btn-q" disabled onclick="submitQ()">Zobraziť odhalenie →</button>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S10 — DEBRIEF
+═══════════════════════════════════ -->
+<div id="s-debrief" class="screen" aria-labelledby="h-debrief">
+<div class="card">
+  <div class="section-label" aria-hidden="true">Odhalenie</div>
+  <h1 id="h-debrief">Čo sa <em>skutočne</em> dialo?</h1>
+
+  <p>Stretol si správcu a rozhodol si sa, koľko mu zveriť — na základe jeho popisu, titulu a skúseností.</p>
+  <p>Tu je to, čo sme ti nepovedali:</p>
+
+  <div class="debrief-reveal" role="region" aria-label="Kľúčové odhalenie">
+    <div class="dr-lbl">Kľúčové odhalenie</div>
+    <div class="dr-headline">Správca bol simulovaný. Vrátil pevnú sumu — bez ohľadu na to, kto bol popísaný.</div>
+    <p class="dr-desc">Bot v každom hraní vrátil <strong>75 % z zdvojnásobenej sumy</strong>. Rôzni účastníci stretli rôznych správcov — niektorí videli skúseného odborníka, iní študenta. Popis nemal vplyv na to, čo dostali späť. Mal vplyv len na to, <em>koľko poslali</em>.</p>
+  </div>
+
+  <div class="stats-row" role="group" aria-label="Tvoje výsledky">
+    <div class="stat-tile"><div class="stv" id="db-sent-pct">—</div><div class="stl">Poslal si (% z rozpočtu)</div></div>
+    <div class="stat-tile"><div class="stv" id="db-trustee-icon">—</div><div class="stl">Tvoj správca</div></div>
+    <div class="stat-tile"><div class="stv" id="db-entries">—</div><div class="stl">Žrebové lístky</div></div>
+  </div>
+
+  <div class="bar-section" id="bar-section" aria-label="Porovnanie s referenčnými hodnotami"></div>
+
+  <div class="insight-box" role="note">
+    <div class="ib-title">Sociologický presah</div>
+    <p>Výskumy ukazujú, že ľudia systematicky posielajú viac bodov správcom s vyšším vnímaným statusom — aj keď ich správanie je identické. Tento jav vysvetľuje, ako sociálne nerovnosti pretrvávajú: výskumy ukazujú, že ľudia s vyšším statusom dostávajú viac príležitostí, kapitálu a dôvery — nie preto, že sú automaticky spoľahlivejší, ale preto, že <em>vyzerajú</em> spoľahlivejšie.</p>
+  </div>
+
+  <p style="font-size:.83rem;color:var(--ink3);margin-top:4px">Zdroj: Berg, Dickhaut & McCabe (1995). <em>Trust, Reciprocity, and Social History.</em> Games and Economic Behavior.</p>
+
+  <div id="ref-table-wrap"></div>
+
+  <button class="btn btn-primary" onclick="showEmail()">Zapojiť sa do žrebovania →</button>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S11 — EMAIL
+═══════════════════════════════════ -->
+<div id="s-email" class="screen" aria-labelledby="h-email">
+<div class="card">
+  <div class="section-label" aria-hidden="true">Žrebovanie o knihu</div>
+  <h2 id="h-email">Zadaj email pre žreb</h2>
+  <p>Spomedzi všetkých účastníkov náhodne vyberieme <strong>3 výhercov</strong> vedeckej knihy.</p>
+
+  <div class="stats-row">
+    <div class="stat-tile"><div class="stv" id="em-entries">—</div><div class="stl">Tvoje lístky</div></div>
+    <div class="stat-tile"><div class="stv" id="em-mat">—</div><div class="stl">Body — mriežka</div></div>
+    <div class="stat-tile"><div class="stv" id="em-str">—</div><div class="stl">Body — Stroop</div></div>
+  </div>
+
+  <label for="email-in" class="q-label" style="margin-top:16px;display:block">Emailová adresa</label>
+  <input type="email" class="email-input" id="email-in" placeholder="tvoj@email.sk" autocomplete="email" aria-describedby="email-err" oninput="validateEmailLive()">
+  <div class="email-err" id="email-err" role="alert" aria-live="polite"></div>
+  <div class="notice" role="note">Email použijeme výhradne na kontaktovanie víťazov. Nepridávame ťa na žiadne zoznamy.</div>
+
+  <button class="btn btn-primary" id="btn-email" onclick="submitEmail()">Zaregistrovať sa →</button>
+  <button class="btn btn-ghost" onclick="skipEmail()">Preskočiť — nechcem súťažiť</button>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     S12 — THANKS
+═══════════════════════════════════ -->
+<div id="s-thanks" class="screen" aria-labelledby="h-thanks">
+<div class="card" style="text-align:center">
+  <div class="thanks-seal" aria-hidden="true">✓</div>
+  <div class="section-label" style="justify-content:center" aria-hidden="true">Experiment dokončený</div>
+  <h2 id="h-thanks">Ďakujeme za účasť!</h2>
+  <p>Tvoje rozhodnutia boli zaznamenané. Pomáhajú nám lepšie pochopiť, ako sociálny status ovplyvňuje medziľudskú dôveru.</p>
+  <p class="last">Víťazov žrebovania kontaktujeme do 2 týždňov.</p>
+  <div class="divider"></div>
+  <p class="last" style="font-size:.82rem;color:var(--ink3)">Ak máš otázky o experimente, kontaktuj nás na stánku.</p>
+</div>
+</div>
+
+</main>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════
+const MATRIX_DURATION  = 60;   // seconds
+const STROOP_DURATION  = 45;   // seconds
+const STROOP_ITEM_SEC  = 3;    // seconds per item
+const STROOP_TRIALS    = 20;   // how many stimuli to pre-generate
+const MULTIPLIER       = 2;
+const RETURN_RATE      = 0.75;
+
+// Scoring
+const BASE_POINTS         = 300;
+const MATRIX_POINTS_PER_HIT = 80;
+const STROOP_POINTS_PER_HIT = 60;
+const STROOP_PENALTY        = 20; // deducted per wrong answer
+
+// Entries for prize draw
+const ENTRIES_BASE = 1;
+const ENTRIES_PER  = 4; // correct answers needed per extra ticket
+
+// Stroop colours
+const COLORS = [
+  { name: 'ČERVENÁ', css: 'var(--sc-red)' },
+  { name: 'MODRÁ',   css: 'var(--sc-blue)' },
+  { name: 'ZELENÁ',  css: 'var(--sc-green)' },
+  { name: 'ŽLTÁ',    css: 'var(--sc-yellow)' },
+];
+
+// Reference values (% sent) from trust game literature
+const REF_VALUES = {
+  senior:  { label: 'Skúsený odborník',   refPct: 58, note: '(meta-analýza Johnson & Mislin, 2011)' },
+  clerk:   { label: 'Štátny zamestnanec', refPct: 49, note: '(meta-analýza Johnson & Mislin, 2011)' },
+  student: { label: 'Začínajúci študent', refPct: 40, note: '(meta-analýza Johnson & Mislin, 2011)' },
+};
+
+const TRUSTEES = [
+  {
+    id: 'senior',
+    avatar: '👔',
+    title: 'Senior finančný poradca',
+    subtitle: '18 rokov praxe · správa investičných portfólií',
+    desc: 'Pôsobí v oblasti správy investícií od roku 2006. Vyštudoval financie na ekonomickej univerzite, neskôr absolvoval postgraduálne štúdium v zahraničí. Spravuje portfóliá klientov v celkovej hodnote niekoľkých miliónov eur.',
+    statusLabel: 'Skúsený odborník',
+  },
+  {
+    id: 'clerk',
+    avatar: '🏛️',
+    title: 'Referent obecného úradu',
+    subtitle: '9 rokov praxe · správa obecného majetku',
+    desc: 'Pracuje na oddelení správy majetku miestneho obecného úradu. Zodpovedá za evidenciu a správu obecného majetku. Pred nástupom na úrad pracoval niekoľko rokov v súkromnom sektore.',
+    statusLabel: 'Štátny zamestnanec',
+  },
+  {
+    id: 'student',
+    avatar: '🎓',
+    title: 'Študent ekonómie',
+    subtitle: '3. ročník bakalárskeho štúdia · bez praxe',
+    desc: 'Momentálne študuje na 3. ročníku bakalárskeho štúdia ekonómie. Brigáduje ako asistent v účtovníckej firme. V rámci štúdia absolvoval predmety z financií a investícií.',
+    statusLabel: 'Začínajúci študent',
+  },
+];
+
+const Q_DEFS = {
+  age:    { id:'q-age',    opts:['Pod 18 rokov','18–24 rokov','25–34 rokov','35–49 rokov','50+ rokov'] },
+  gender: { id:'q-gender', opts:['Muž','Žena','Iné / Nechcem uviesť'] },
+  trust:  { id:'q-trust',  opts:['Veľmi dôverujem','Skôr dôverujem','Ani-ani','Skôr nedôverujem','Vôbec nedôverujem'] },
+};
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+const S = {
+  trustee:        null,
+  // matrix
+  matrixScore:    0,
+  matrixPoints:   0,
+  // stroop
+  stroopCorrect:  0,
+  stroopWrong:    0,
+  stroopPoints:   0,
+  // combined
+  taskPoints:     0,
+  taskEntries:    0,
+  // game
+  roundPoints:    0,
+  sent:           0,
+  returned:       0,
+  totalEarnings:  0,
+  // meta
+  questionnaire:  {},
+  dataSaved:      false,
+  email:          '',
+};
+
+// timer handles
+let matTimerID   = null;
+let stroopGlobalID = null;
+let stroopItemID   = null;
+
+// matrix state
+let matSecsLeft    = MATRIX_DURATION;
+let matAnswerLocked = false;
+let matCorrectAns  = 0;
+let matsDone       = 0;
+
+// stroop state
+let stroopSecsLeft  = STROOP_DURATION;
+let stroopItemSecsLeft = STROOP_ITEM_SEC;
+let stroopTrials    = [];
+let stroopIndex     = 0;
+let stroopLocked    = false;
+let stroopActive    = false;
+let stroopEnded     = false; // double-call guard
+
+// ══════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════
+const fmt    = n => (typeof n==='number' && !isNaN(n)) ? n.toLocaleString('sk-SK')+' b' : '—';
+const fmtPct = n => Math.round(n)+' %';
+const isEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('active');
+  window.scrollTo(0,0);
+  // Move focus to first heading
+  requestAnimationFrame(() => {
+    const h = el.querySelector('h1,h2');
+    if (h) { h.setAttribute('tabindex','-1'); h.focus(); }
+  });
+}
+
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ══════════════════════════════════════════════════════
+// CONSENT
+// ══════════════════════════════════════════════════════
+const consentRow = document.getElementById('consent-row');
+let consented = false;
+function toggleConsent() {
+  consented = !consented;
+  consentRow.classList.toggle('checked', consented);
+  consentRow.setAttribute('aria-checked', String(consented));
+  document.getElementById('btn-start').disabled = !consented;
+}
+consentRow.addEventListener('click', toggleConsent);
+consentRow.addEventListener('keydown', e => { if (e.key===' '||e.key==='Enter'){e.preventDefault();toggleConsent();} });
+
+// ══════════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════════
+function startExperiment() {
+  document.getElementById('btn-start').disabled = true;
+  S.trustee = TRUSTEES[Math.floor(Math.random() * TRUSTEES.length)];
+  showScreen('s-task-intro');
+}
+
+// ══════════════════════════════════════════════════════
+// MATRIX TASK
+// ══════════════════════════════════════════════════════
+function genMatrix() {
+  const large = matsDone >= 5;
+  const rows  = large ? 10 : 8;
+  const cols  = large ? 12 : 10;
+  const cells = []; let ones = 0;
+  for (let i=0; i<rows*cols; i++) {
+    const v = Math.random()<0.28 ? 1 : 0;
+    cells.push(v); if (v===1) ones++;
+  }
+  return { cells, ones, rows, cols };
+}
+
+function renderMatrix(m) {
+  const g = document.getElementById('matrix-grid');
+  g.style.gridTemplateColumns = `repeat(${m.cols},1fr)`;
+  const frag = document.createDocumentFragment();
+  m.cells.forEach(v => {
+    const d = document.createElement('div');
+    d.className = v===1 ? 'mc one' : 'mc';
+    d.textContent = v;
+    d.setAttribute('aria-hidden','true');
+    frag.appendChild(d);
+  });
+  g.innerHTML = '';
+  g.appendChild(frag);
+  g.setAttribute('aria-label', `Mriežka ${m.rows}×${m.cols} núl a jednotiek`);
+}
+
+function newMatrix() {
+  const m = genMatrix();
+  matCorrectAns = m.ones;
+  renderMatrix(m);
+  const inp = document.getElementById('ans-input');
+  inp.value=''; inp.className='answer-input';
+  // Only auto-focus on non-touch devices to avoid keyboard thrash on mobile
+  if (!('ontouchstart' in window)) inp.focus();
+  const fb = document.getElementById('mat-feedback');
+  fb.textContent=''; fb.className='feedback';
+  matAnswerLocked = false;
+}
+
+function submitMatrixAnswer() {
+  if (matAnswerLocked || matSecsLeft<=0) return;
+  const inp = document.getElementById('ans-input');
+  const raw = inp.value.trim();
+  if (!raw) return;
+  const val = parseInt(raw,10);
+  if (isNaN(val)) return;
+  matAnswerLocked = true;
+  const fb = document.getElementById('mat-feedback');
+  if (val===matCorrectAns) {
+    S.matrixScore++;
+    document.getElementById('mat-score').textContent = S.matrixScore;
+    inp.className='answer-input ok';
+    fb.textContent='✓ Správne!'; fb.className='feedback ok';
+  } else {
+    inp.className='answer-input err';
+    fb.textContent=`✗ Nesprávne — správne: ${matCorrectAns}`; fb.className='feedback err';
+  }
+  matsDone++;
+  setTimeout(()=>{ if (matSecsLeft>0) newMatrix(); }, 650);
+}
+
+// Enter key for matrix
+document.addEventListener('keydown', e => {
+  if (e.key!=='Enter') return;
+  if (document.getElementById('s-matrix').classList.contains('active') && !matAnswerLocked) {
+    submitMatrixAnswer();
+  }
+});
+
+function startMatrixTask() {
+  showScreen('s-matrix');
+  matSecsLeft=MATRIX_DURATION; matsDone=0; S.matrixScore=0; matAnswerLocked=false;
+  if (matTimerID) { clearInterval(matTimerID); matTimerID=null; }
+  newMatrix();
+
+  const timerEl = document.getElementById('mat-timer');
+  const progEl  = document.getElementById('mat-prog-fill');
+  const railEl  = document.getElementById('mat-prog-rail');
+
+  matTimerID = setInterval(()=>{
+    matSecsLeft--;
+    timerEl.textContent = matSecsLeft;
+    progEl.style.width  = (matSecsLeft/MATRIX_DURATION*100)+'%';
+    railEl.setAttribute('aria-valuenow', matSecsLeft);
+    if (matSecsLeft<=10) timerEl.classList.add('urgent');
+    if (matSecsLeft<=0) {
+      clearInterval(matTimerID); matTimerID=null;
+      matAnswerLocked=true;
+      endMatrixTask();
+    }
+  }, 1000);
+}
+
+function endMatrixTask() {
+  S.matrixPoints = BASE_POINTS + S.matrixScore * MATRIX_POINTS_PER_HIT;
+  showScreen('s-stroop-intro');
+}
+
+// ══════════════════════════════════════════════════════
+// STROOP TASK
+// ══════════════════════════════════════════════════════
+function genStroopTrials(n) {
+  // ~30% congruent, ~70% incongruent
+  const trials = [];
+  for (let i=0; i<n; i++) {
+    const textColor  = rand(COLORS);
+    let   inkColor;
+    if (Math.random() < 0.30) {
+      inkColor = textColor; // congruent
+    } else {
+      const others = COLORS.filter(c=>c.name!==textColor.name);
+      inkColor = rand(others); // incongruent
+    }
+    trials.push({ word: textColor.name, ink: inkColor });
+  }
+  return trials;
+}
+
+function buildColorBtns() {
+  const wrap = document.getElementById('color-btns');
+  const clsMap = { 'ČERVENÁ':'clr-red', 'MODRÁ':'clr-blue', 'ZELENÁ':'clr-green', 'ŽLTÁ':'clr-yellow' };
+  // Shuffle button order so correct answer position isn't predictable
+  const shuffled = [...COLORS].sort(()=>Math.random()-.5);
+  wrap.innerHTML = '';
+  shuffled.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'color-btn ' + (clsMap[c.name] || '');
+    btn.dataset.color = c.name;
+    btn.textContent = c.name;
+    btn.setAttribute('aria-label', c.name);
+    btn.addEventListener('click', ()=>stroopAnswer(c.name));
+    wrap.appendChild(btn);
+  });
+}
+
+const CIRC = 138.23; // 2π×22 — matches SVG stroke-dasharray
+
+function updateRing(secsLeft) {
+  const frac = secsLeft / STROOP_ITEM_SEC;
+  const offset = CIRC * (1 - frac);
+  const ring = document.getElementById('str-ring-fg');
+  const num  = document.getElementById('str-ring-num');
+  if (!ring || !num) return;
+  ring.style.strokeDashoffset = offset;
+  ring.classList.toggle('urgent', secsLeft<=1);
+  num.textContent = Math.ceil(secsLeft);
+  num.classList.toggle('urgent', secsLeft<=1);
+}
+
+function showStroopItem() {
+  if (stroopIndex >= stroopTrials.length || stroopSecsLeft<=0) {
+    endStroopTask(); return;
+  }
+  const trial = stroopTrials[stroopIndex];
+  const el = document.getElementById('stroop-word');
+  el.textContent = trial.word;
+  el.style.color = trial.ink.css;
+  el.setAttribute('aria-label', `Slovo: ${trial.word}, farba písma: identifikuj`);
+  el.className = 'stroop-word';
+
+  document.getElementById('str-timeout-msg').textContent = '';
+  stroopLocked = false;
+  stroopItemSecsLeft = STROOP_ITEM_SEC;
+  updateRing(STROOP_ITEM_SEC);
+
+  // Enable buttons
+  document.querySelectorAll('.color-btn').forEach(b => b.disabled=false);
+
+  // Per-item countdown (100ms ticks for smooth ring)
+  if (stroopItemID) { clearInterval(stroopItemID); stroopItemID=null; }
+  const startMs = Date.now();
+  stroopItemID = setInterval(()=>{
+    const elapsed = (Date.now()-startMs)/1000;
+    stroopItemSecsLeft = Math.max(0, STROOP_ITEM_SEC - elapsed);
+    updateRing(stroopItemSecsLeft);
+    if (stroopItemSecsLeft<=0) {
+      clearInterval(stroopItemID); stroopItemID=null;
+      if (!stroopLocked) itemTimeout();
+    }
+  }, 80);
+}
+
+function itemTimeout() {
+  stroopLocked = true;
+  document.querySelectorAll('.color-btn').forEach(b=>b.disabled=true);
+  S.stroopWrong++;
+  document.getElementById('str-wrong').textContent = S.stroopWrong;
+  document.getElementById('str-timeout-msg').textContent = '⏱ Čas vypršal';
+  stroopIndex++;
+  setTimeout(()=>{ if (stroopActive) showStroopItem(); }, 700);
+}
+
+function stroopAnswer(colorName) {
+  if (stroopLocked || !stroopActive) return;
+  stroopLocked = true;
+  if (stroopItemID) { clearInterval(stroopItemID); stroopItemID=null; }
+  document.querySelectorAll('.color-btn').forEach(b=>b.disabled=true);
+
+  const trial = stroopTrials[stroopIndex];
+  const correct = trial.ink.name;
+  const wordEl  = document.getElementById('stroop-word');
+
+  if (colorName===correct) {
+    S.stroopCorrect++;
+    document.getElementById('str-correct').textContent = S.stroopCorrect;
+    wordEl.classList.add('flash-ok');
+    document.getElementById('str-timeout-msg').textContent = '';
+  } else {
+    S.stroopWrong++;
+    document.getElementById('str-wrong').textContent = S.stroopWrong;
+    wordEl.classList.add('flash-err');
+    document.getElementById('str-timeout-msg').textContent = `✗ Správne: ${correct}`;
+  }
+
+  stroopIndex++;
+  setTimeout(()=>{ if (stroopActive) showStroopItem(); }, 600);
+}
+
+function startStroopTask() {
+  showScreen('s-stroop');
+  stroopSecsLeft = STROOP_DURATION;
+  stroopIndex    = 0;
+  stroopLocked   = false;
+  stroopActive   = true;
+  stroopEnded    = false;
+  S.stroopCorrect = 0;
+  S.stroopWrong   = 0;
+
+  stroopTrials = genStroopTrials(STROOP_TRIALS);
+  buildColorBtns();
+
+  if (stroopGlobalID) { clearInterval(stroopGlobalID); stroopGlobalID=null; }
+  if (stroopItemID)   { clearInterval(stroopItemID);   stroopItemID=null; }
+
+  const timerEl = document.getElementById('str-total-timer');
+  const progEl  = document.getElementById('str-prog-fill');
+  const railEl  = document.getElementById('str-prog-rail');
+
+  stroopGlobalID = setInterval(()=>{
+    stroopSecsLeft--;
+    timerEl.textContent = stroopSecsLeft;
+    progEl.style.width  = (stroopSecsLeft/STROOP_DURATION*100)+'%';
+    railEl.setAttribute('aria-valuenow', stroopSecsLeft);
+    if (stroopSecsLeft<=10) timerEl.classList.add('urgent');
+    if (stroopSecsLeft<=0) {
+      clearInterval(stroopGlobalID); stroopGlobalID=null;
+      if (stroopItemID) { clearInterval(stroopItemID); stroopItemID=null; }
+      stroopActive = false;
+      endStroopTask();
+    }
+  }, 1000);
+
+  showStroopItem();
+}
+
+function endStroopTask() {
+  if (stroopEnded) return; // guard double-call
+  stroopEnded  = true;
+  stroopActive = false;
+  if (stroopGlobalID) { clearInterval(stroopGlobalID); stroopGlobalID=null; }
+  if (stroopItemID)   { clearInterval(stroopItemID);   stroopItemID=null; }
+
+  // Stroop points: correct hits minus penalty for wrong, floored at 0
+  S.stroopPoints = Math.max(0,
+    S.stroopCorrect * STROOP_POINTS_PER_HIT - S.stroopWrong * STROOP_PENALTY
+  );
+  S.taskPoints   = S.matrixPoints + S.stroopPoints;
+
+  // Entries based on combined correct answers
+  const totalCorrect = S.matrixScore + S.stroopCorrect;
+  S.taskEntries  = ENTRIES_BASE + Math.min(6, Math.floor(totalCorrect / ENTRIES_PER));
+
+  S.totalEarnings = S.taskPoints;
+
+  // Populate bridge screen
+  document.getElementById('br-matrix').textContent = fmt(S.matrixPoints);
+  document.getElementById('br-stroop').textContent = fmt(S.stroopPoints);
+  document.getElementById('br-total').textContent  = fmt(S.taskPoints);
+
+  showScreen('s-bridge');
+}
+
+// ══════════════════════════════════════════════════════
+// TRUST GAME
+// ══════════════════════════════════════════════════════
+function startGame() {
+  const t  = S.trustee;
+  S.roundPoints = S.taskPoints;
+
+  document.getElementById('t-avatar').textContent    = t.avatar;
+  document.getElementById('t-name').textContent      = t.title;
+  document.getElementById('t-title').textContent     = t.subtitle;
+  document.getElementById('t-desc').textContent      = t.desc;
+  document.getElementById('my-balance').textContent  = fmt(S.roundPoints);
+  document.getElementById('total-so-far').textContent = fmt(S.totalEarnings);
+
+  const slider = document.getElementById('send-slider');
+  slider.value = '50';
+  slider.setAttribute('aria-valuemin','0');
+  slider.setAttribute('aria-valuemax', String(S.roundPoints));
+  document.getElementById('btn-send').disabled = false;
+  updateSend();
+  showScreen('s-game');
+}
+
+function updateSend() {
+  const rp  = S.roundPoints;
+  const pct = parseInt(document.getElementById('send-slider').value,10)/100;
+  const sent     = Math.round(rp * pct);
+  const keep     = rp - sent;
+  const doubled  = sent * MULTIPLIER;
+  const returned = Math.round(doubled * RETURN_RATE);
+
+  document.getElementById('send-val').textContent   = fmt(sent);
+  document.getElementById('tp-send').textContent    = fmt(sent);
+  document.getElementById('tp-keep').textContent    = fmt(keep);
+  document.getElementById('tp-trustee').textContent = fmt(doubled);
+  document.getElementById('tp-return').textContent  = fmt(returned)+' (možné)';
+
+  const slider = document.getElementById('send-slider');
+  slider.setAttribute('aria-valuenow', String(sent));
+  slider.setAttribute('aria-valuetext', `${fmt(sent)} — ${fmtPct(pct*100)} z tvojho rozpočtu`);
+}
+
+function submitSend() {
+  document.getElementById('btn-send').disabled = true;
+
+  const rp       = S.roundPoints;
+  const pct      = parseInt(document.getElementById('send-slider').value,10)/100;
+  const sent     = Math.round(rp * pct);
+  const keep     = rp - sent;
+  const doubled  = sent * MULTIPLIER;
+  const returned = Math.round(doubled * RETURN_RATE);
+  const gain     = keep + returned;
+
+  S.sent     = sent;
+  S.returned = returned;
+  S.totalEarnings += gain;
+
+  const t   = S.trustee;
+  const box = document.getElementById('res-box');
+  const hd  = document.getElementById('res-head');
+  box.className = gain>rp ? 'result-box positive' : 'result-box neutral';
+  hd.textContent = gain>rp ? `Správca vrátil body — zarobil si` : `Správca vrátil body`;
+
+  document.getElementById('rl-sent').textContent     = fmt(sent);
+  document.getElementById('rl-doubled').textContent  = fmt(doubled);
+  document.getElementById('rl-returned').textContent = fmt(returned);
+  document.getElementById('rl-gain').textContent     = fmt(gain);
+  document.getElementById('tr-total').textContent    = fmt(S.totalEarnings);
+
+  document.getElementById('btn-next').disabled = false;
+  showScreen('s-result');
+}
+
+function goToQuestionnaire() {
+  document.getElementById('btn-next').disabled = true;
+  showScreen('s-questionnaire');
+}
+
+// ══════════════════════════════════════════════════════
+// QUESTIONNAIRE
+// ══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', ()=>{
+  Object.entries(Q_DEFS).forEach(([key,def])=>buildRadioCol(def.id, def.opts, key));
+});
+
+function buildRadioCol(containerId, opts, key) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = '';
+  opts.forEach((opt,i)=>{
+    const lbl = document.createElement('label');
+    lbl.className = 'radio-opt';
+    const inp = document.createElement('input');
+    inp.type='radio'; inp.name=key; inp.value=String(i);
+    inp.setAttribute('aria-label', opt);
+    const dot = document.createElement('div');
+    dot.className='rdot'; dot.setAttribute('aria-hidden','true');
+    const span = document.createElement('span');
+    span.textContent = opt;
+    lbl.appendChild(inp); lbl.appendChild(dot); lbl.appendChild(span);
+    lbl.addEventListener('click',()=>{
+      c.querySelectorAll('.radio-opt').forEach(l=>l.classList.remove('sel'));
+      lbl.classList.add('sel');
+      S.questionnaire[key] = i;
+      checkQ();
+    });
+    c.appendChild(lbl);
+  });
+}
+
+function checkQ() {
+  const done = Object.keys(Q_DEFS).every(k=>S.questionnaire[k]!==undefined);
+  document.getElementById('btn-q').disabled = !done;
+}
+
+function submitQ() {
+  document.getElementById('btn-q').disabled = true;
+  showDebrief();
+}
+
+// ══════════════════════════════════════════════════════
+// DEBRIEF
+// ══════════════════════════════════════════════════════
+function showDebrief() {
+  const t       = S.trustee;
+  const rp      = S.roundPoints || 1;
+  const sentPct = Math.round((S.sent / rp)*100);
+  const ref     = REF_VALUES[t.id];
+
+  document.getElementById('db-sent-pct').textContent   = fmtPct(sentPct);
+  document.getElementById('db-trustee-icon').textContent = t.avatar;
+  document.getElementById('db-entries').textContent    = S.taskEntries+'×';
+
+  // Comparison bars
+  const barSection = document.getElementById('bar-section');
+  barSection.innerHTML = `
+    <p style="font-size:.82rem;color:var(--ink3);margin-bottom:12px">Porovnanie s priemernými hodnotami z výskumu (Johnson &amp; Mislin, 2011):</p>
+    <div class="bar-row">
+      <div class="bar-row-lbl you">
+        <span>Ty — ${t.statusLabel}</span>
+        <span class="br-pct">${fmtPct(sentPct)}</span>
+      </div>
+      <div class="bar-track" role="progressbar" aria-valuenow="${sentPct}" aria-valuemin="0" aria-valuemax="100" aria-label="Tvoje percento poslaných bodov">
+        <div class="bar-fill you" id="bar-you" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-row-lbl">
+        <span>Výskumný priemer — ${ref.label}</span>
+        <span class="br-pct">${fmtPct(ref.refPct)}</span>
+      </div>
+      <div class="bar-track" role="progressbar" aria-valuenow="${ref.refPct}" aria-valuemin="0" aria-valuemax="100" aria-label="Výskumný priemer">
+        <div class="bar-fill ref" style="width:${ref.refPct}%"></div>
+      </div>
+      <div class="bar-caption">${ref.note}</div>
+    </div>
+  `;
+
+  requestAnimationFrame(()=>{
+    setTimeout(()=>{
+      const b = document.getElementById('bar-you');
+      if (b) b.style.width = sentPct+'%';
+    }, 200);
+  });
+
+  // Reference table
+  document.getElementById('ref-table-wrap').innerHTML = `
+    <p style="font-size:.82rem;color:var(--ink2);margin:20px 0 8px">Rôzni účastníci stretli rôznych správcov. Referenčné hodnoty pre každý profil:</p>
+    <table class="ref-table" aria-label="Referenčné hodnoty pre jednotlivé profily správcov">
+      <thead><tr><th>Profil správcu</th><th>Výskumný priemer</th></tr></thead>
+      <tbody>
+        ${TRUSTEES.map(tr=>`
+          <tr class="${tr.id===t.id?'highlight-row':''}">
+            <td>${tr.avatar} ${tr.statusLabel}${tr.id===t.id?' ← ty':''}</td>
+            <td><span class="mono">${fmtPct(REF_VALUES[tr.id].refPct)}</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  showScreen('s-debrief');
+}
+
+// ══════════════════════════════════════════════════════
+// EMAIL
+// ══════════════════════════════════════════════════════
+function showEmail() {
+  document.getElementById('em-entries').textContent = S.taskEntries+'×';
+  document.getElementById('em-mat').textContent     = S.matrixScore;
+  document.getElementById('em-str').textContent     = S.stroopCorrect;
+  showScreen('s-email');
+}
+
+function validateEmailLive() {
+  const v   = document.getElementById('email-in').value.trim();
+  const err = document.getElementById('email-err');
+  if (!v || isEmail(v)) { err.textContent=''; return true; }
+  err.textContent = 'Neplatný formát emailu';
+  return false;
+}
+
+function submitEmail() {
+  const v = document.getElementById('email-in').value.trim();
+  if (v && !isEmail(v)) { document.getElementById('email-err').textContent='Prosím, zadaj platný email.'; return; }
+  S.email = v;
+  document.getElementById('btn-email').disabled = true;
+  saveData();
+  showScreen('s-thanks');
+}
+
+function skipEmail() {
+  S.email = '';
+  saveData();
+  showScreen('s-thanks');
+}
+
+// ══════════════════════════════════════════════════════
+// SAVE
+// ══════════════════════════════════════════════════════
+function saveData() {
+  if (S.dataSaved) return;
+  S.dataSaved = true;
+  const rp = S.roundPoints || 1;
+  const record = {
+    id:            `${Date.now()}_${Math.random().toString(36).substr(2,6)}`,
+    timestamp:     new Date().toISOString(),
+    trusteeId:     S.trustee?.id || null,
+    matrixScore:   S.matrixScore,
+    matrixPoints:  S.matrixPoints,
+    stroopCorrect: S.stroopCorrect,
+    stroopWrong:   S.stroopWrong,
+    stroopPoints:  S.stroopPoints,
+    taskPoints:    S.taskPoints,
+    taskEntries:   S.taskEntries,
+    roundPoints:   S.roundPoints,
+    sent:          S.sent,
+    sentPct:       Math.round((S.sent/rp)*100),
+    returned:      S.returned,
+    totalEarnings: S.totalEarnings,
+    questionnaire: S.questionnaire,
+    email:         S.email || null,
+  };
+
+  try {
+    const existing = JSON.parse(localStorage.getItem('trust_results')||'[]');
+    existing.push(record);
+    localStorage.setItem('trust_results', JSON.stringify(existing));
+  } catch(e) { /* private browsing */ }
+
+  console.log('%cTRUST EXPERIMENT RESULT','color:#1b3a6b;font-weight:bold;font-size:14px');
+  console.log(JSON.stringify(record, null, 2));
+}
+</script>
+</body>
+</html>
